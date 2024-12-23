@@ -1,4 +1,4 @@
-# Analysis of Monthly Publications on arXiv
+# Tracking the Evolution of Science Worldwide
 
 This repository contains Python code to **analyze the evolution of science worldwide** by counting monthly publications in different arXiv knowledge categories. 
 
