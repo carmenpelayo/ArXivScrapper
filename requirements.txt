@@ -1,0 +1,7 @@
+pandas
+streamlit
+numpy
+plotly
+matplotlib
+prophet
+logging
