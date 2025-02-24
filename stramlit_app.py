@@ -4,8 +4,6 @@ import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
 from prophet import Prophet
-from ipywidgets import interact, IntSlider, Dropdown
-from IPython.display import display
 import logging
 logging.getLogger('cmdstanpy').setLevel(logging.ERROR)
 logging.getLogger('prophet').setLevel(logging.ERROR)
