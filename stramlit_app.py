@@ -175,7 +175,12 @@ arxiv_categories = {
 # ======================
 st.title("ArXiv Tracker")
 st.markdown("This app leverages data extracted from arXiv to analyze the **evolution of science worldwide**.")
-st.markdown("**[arXiv](%s)** is an open-access research paper repository covering a wide range of disciplines, including physics, mathematics, computer science, biology, statistics, quantitative finance, economics and electronic engineering. As one of the most important platforms for the early dissemination of research results, arXiv is considered a reliable indicator of global scientific progress.")
+st.markdown("**[arXiv](%s)** is an **open-access research paper repository** covering a wide range of disciplines, including physics, mathematics, computer science, biology, statistics, quantitative finance, economics and electronic engineering. As one of the most important platforms for the early dissemination of research results, arXiv is considered a **reliable indicator of global scientific progress**.")
+st.markdown(With this app, you can:)
+st.markdown("(1) **Forecast** the future evolution of a certain category.")
+st.markdown("(2) **Numerically and visually analyze** different arXiv categories.")
+st.markdown("(3) **Decompose** a certain category to analyze its time components.")
+st.markdown("(4) **Build your own index** by aggregating categories, smoothing and standardizing.")
 
 # Load the Excel file; assume the date column is the index.
 df = pd.read_excel("arxiv_monthly_publications.xlsx", index_col=0)
