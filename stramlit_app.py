@@ -198,6 +198,8 @@ st.write("If you suspect the variable is affected by many external events or reg
 # Number of months to forecast
 future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
 
+st.divider()
+
 # ====================== (2) Category Comparison ======================
 st.sidebar.header("Stats Settings")
 
@@ -221,6 +223,8 @@ if standardize:
     df_std = (df_filtered[selected_categories] - df_filtered[selected_categories].mean()) / df_filtered[selected_categories].std()
 else:
     df_std = df_filtered[selected_categories]
+
+st.divider()
 
 # ====================== (3) Time Series Decomposition ======================
 st.sidebar.header("Decomposition Settings")
@@ -246,7 +250,7 @@ if selected_forecast:
         fig1, ax1 = plt.subplots(figsize=(10, 5))
         ax1.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", marker='o')
         ax1.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed')
-        ax1.set_title(f"Predicted Monthly Publications for {field_label}")
+        ax1.set_title(f"Predicted Monthly Publications for {selected_forecast}")
         ax1.set_xlabel("Year")
         ax1.set_ylabel("ArXiv Monthly Publications")
         ax1.legend()
@@ -256,6 +260,8 @@ if selected_forecast:
         st.error(f"Forecasting error: {e}")
 else:
     st.write("Select a category for forecasting.")
+
+st.divider()
 
 # ====================== (2) Stats ======================
 st.subheader("Statistics")
@@ -286,6 +292,8 @@ if selected_categories:
     st.pyplot(fig3)
 else:
     st.write("Please select categories to view the correlation heatmap.")
+
+st.divider()
 
 # ======================
 # Time Series Decomposition
