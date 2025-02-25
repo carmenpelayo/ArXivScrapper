@@ -186,20 +186,17 @@ df.rename(columns=arxiv_categories, inplace=True)
 # ======================
 # ====================== (1) Forecasting Parameters ======================
 with st.sidebar:
-    st.subheader("Forecast Model Settings")
+    st.subheader("📈 Forecasting Settings")
+    
     # Select a category for forecasting
     all_categories = list(arxiv_categories.values())
     selected_forecast = st.selectbox("Select Category for Forecasting", all_categories)
-    
-    # Adjust Prophet’s changepoint prior scale
-    cp_scale = st.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
+
     # Number of months to forecast
     future_months = st.slider("Months to Forecast", min_value=3, max_value=48, value=12)
     
-    st.divider()
-    
     # ====================== (2) Category Comparison ======================
-    st.header("Stats Settings")
+    st.header("📊 Statistics Settings")
     
     # -- Category Selection --
     selected_categories = st.multiselect("Select Categories for Examination",
@@ -222,10 +219,8 @@ with st.sidebar:
     else:
         df_std = df_filtered[selected_categories]
     
-    st.divider()
-    
     # ====================== (3) Time Series Decomposition ======================
-    st.header("Decomposition Settings")
+    st.header("⏱️ Decomposition Settings")
     # Pick one category for time series decomposition (from the selected list)
     selected_decomp = st.selectbox("Select Category for Decomposition", all_categories)
 
@@ -233,16 +228,16 @@ with st.sidebar:
 #       Dashboard
 # ======================
 # ====================== (1) Forecasting ======================
-st.subheader("📈 Forecasting")
+st.subheader("📈 Forecasting", divider=True)
 url = "https://facebook.github.io/prophet/"
-st.write("Here you can forecast the evolution of your science category with Meta's [Prophet](%s) model." % url)
+st.write("Here you can **forecast the evolution** of your category with Meta's [Prophet](%s) model." % url)
 if selected_forecast:
     # Prepare data for Prophet: reset index and rename columns
     df_prophet = df_filtered[[selected_forecast]].reset_index()
     df_prophet.columns = ["ds", "y"]
     
     # Fit Prophet model with adjustable changepoint prior scale
-    model = Prophet(changepoint_prior_scale=cp_scale, weekly_seasonality=False, daily_seasonality=False)
+    model = Prophet(weekly_seasonality=False, daily_seasonality=False)
     try:
         model.fit(df_prophet)
         future = model.make_future_dataframe(periods=future_months, freq='MS')
@@ -264,9 +259,10 @@ else:
 st.divider()
 
 # ====================== (2) Stats ======================
-st.subheader("📊 Statistics")
+st.subheader("📊 Statistics", divider=True)
 
 # -- Visualization
+st.markdown("Visualize how your selected categories **perform over time**.")
 fig2, ax2 = plt.subplots(figsize=(10, 6))
 for col in df_std.columns:
     ax2.plot(df_std.index, df_std[col], label=col)
@@ -278,12 +274,14 @@ ax2.grid(True)
 st.pyplot(fig2)
 
 # -- Summary stats
+st.markdown("**Basic statistics** of your selected categories: ")
 if selected_categories:
     st.write(df_filtered[selected_categories].describe())
 else:
     st.write("Please select at least one category.")
 
 # -- Correlation heatmap
+st.markdown("Examine how your selected categories relate to each other with the **correlation heatmap** below.")
 if selected_categories:
     corr = df_filtered[selected_categories].corr()
     fig3, ax3 = plt.subplots(figsize=(8, 6))
@@ -298,7 +296,10 @@ st.divider()
 # ======================
 # Time Series Decomposition
 # ======================
-st.subheader("⏱️ Time Series Decomposition")
+st.subheader("⏱️ Time Series Decomposition", divider=True)
+st.markdown("Here you can decompose your selected category into the **trend**, **seasonality** and **residuals** for better understanding of its performance over time.")
+url2 = "https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html"
+st.markdown("See the **decomposition methodology** [here](%s)." % url2)
 if selected_decomp:
     # Using an additive model and period=12 (monthly data)
     try:
@@ -310,6 +311,8 @@ if selected_decomp:
         st.error(f"Decomposition error: {e}")
 else:
     st.write("Select a category for decomposition.")
+
+st.divider()
     
 # ======================
 # Data Export Options
