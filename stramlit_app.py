@@ -229,7 +229,7 @@ with st.sidebar:
 #       Dashboard
 # ======================
 # ====================== (1) Forecasting ======================
-st.subheader("📈 Forecasting", divider=True)
+st.subheader("📈 Forecasting")
 url = "https://facebook.github.io/prophet/"
 st.write("Here you can **forecast the evolution** of your category with Meta's [Prophet](%s) model." % url)
 if selected_forecast:
@@ -260,7 +260,7 @@ else:
 st.divider()
 
 # ====================== (2) Stats ======================
-st.subheader("📊 Statistics", divider=True)
+st.subheader("📊 Statistics")
 
 # -- Visualization
 st.markdown("Visualize how your selected categories **perform over time**.")
@@ -297,7 +297,7 @@ st.divider()
 # ======================
 # Time Series Decomposition
 # ======================
-st.subheader("⏱️ Time Series Decomposition", divider=True)
+st.subheader("⏱️ Time Series Decomposition")
 st.markdown("Here you can decompose your selected category into the **trend**, **seasonality** and **residuals** for better understanding of its performance over time.")
 url2 = "https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html"
 st.markdown("See the **decomposition methodology** [here](%s)." % url2)
