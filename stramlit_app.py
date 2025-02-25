@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import io
 import statsmodels.api as sm
 from prophet import Prophet
 from datetime import datetime, timedelta
@@ -313,12 +312,6 @@ if not df_filtered[selected_categories].empty:
     st.download_button("Export Data as CSV", csv, "arxiv_data.csv", "text/csv")
 else:
     st.write("No data available for export.")
-
-# Image Export: allow user to download the comparison plot as PNG
-buf = io.BytesIO()
-fig1.savefig(buf, format="png")
-buf.seek(0)
-st.download_button("Download Comparison Plot as PNG", buf, "comparison_plot.png", "image/png")
 
 '''
 ---------------------------------
