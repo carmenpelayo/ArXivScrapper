@@ -1,10 +1,13 @@
 # Package imports
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import numpy as np
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+import seaborn as sns
+import io
+import statsmodels.api as sm
 from prophet import Prophet
+from datetime import datetime, timedelta
 import logging
 logging.getLogger('cmdstanpy').setLevel(logging.ERROR)
 logging.getLogger('prophet').setLevel(logging.ERROR)
@@ -169,6 +172,156 @@ arxiv_categories = {
 }
 inverted_dict = {v: k for k, v in arxiv_categories.items()}
 
+# ======================
+# 1. Load & Prepare Data
+# ======================
+st.title("ArXiv Publications Dashboard")
+st.write("Explore and forecast trends in monthly arXiv publications.")
+
+# Load the Excel file; assume the date column is the index.
+df = pd.read_excel("arxiv_monthly_publications.xlsx", index_col=0)
+df.index = pd.to_datetime(df.index)
+
+# ======================
+# Sidebar Controls
+# ======================
+st.sidebar.header("Filter and Settings")
+
+# -- Date Range Filter --
+min_date = df.index.min()
+max_date = df.index.max()
+date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date])
+if len(date_range) == 2:
+    df_filtered = df.loc[pd.to_datetime(date_range[0]): pd.to_datetime(date_range[1])]
+else:
+    df_filtered = df.copy()
+
+# -- Category Selection --
+all_categories = list(arxiv_categories.values()
+selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
+                                               all_categories, default=all_categories[:3])
+
+# -- Normalization Toggle --
+normalize = st.sidebar.checkbox("Normalize Data", value=False)
+if normalize:
+    # Normalize each selected series to the [0,1] range
+    df_norm = (df_filtered[selected_categories] - df_filtered[selected_categories].min()) / (
+                df_filtered[selected_categories].max() - df_filtered[selected_categories].min())
+else:
+    df_norm = df_filtered[selected_categories]
+
+# -- Forecasting Parameters --
+st.sidebar.subheader("Forecast Model Settings")
+# Adjust Prophet’s changepoint prior scale
+cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
+# Select a category for forecasting (from the ones selected above)
+if selected_categories:
+    selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", selected_categories)
+else:
+    selected_forecast = None
+# Number of months to forecast
+future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
+
+# -- Decomposition --
+# Pick one category for time series decomposition (from the selected list)
+if selected_categories:
+    selected_decomp = st.sidebar.selectbox("Select Category for Decomposition", selected_categories)
+else:
+    selected_decomp = None
+
+# ======================
+# 2. Summary Statistics
+# ======================
+st.subheader("Summary Statistics")
+if selected_categories:
+    st.write(df_filtered[selected_categories].describe())
+else:
+    st.write("Please select at least one category.")
+
+# ======================
+# 3. Interactive Comparison Plot
+# ======================
+st.subheader("Category Comparison")
+fig1, ax1 = plt.subplots(figsize=(10, 6))
+for col in df_norm.columns:
+    ax1.plot(df_norm.index, df_norm[col], label=col)
+ax1.set_title("Monthly Publications Comparison")
+ax1.set_xlabel("Date")
+ax1.set_ylabel("Normalized Value" if normalize else "Publications")
+ax1.legend()
+ax1.grid(True)
+st.pyplot(fig1)
+
+# ======================
+# 4. Correlation Heatmap
+# ======================
+st.subheader("Correlation Heatmap")
+if selected_categories:
+    corr = df_filtered[selected_categories].corr()
+    fig2, ax2 = plt.subplots(figsize=(8, 6))
+    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax2)
+    ax2.set_title("Correlation between Categories")
+    st.pyplot(fig2)
+else:
+    st.write("Please select categories to view the correlation heatmap.")
+
+# ======================
+# 5. Time Series Decomposition
+# ======================
+st.subheader("Time Series Decomposition")
+if selected_decomp:
+    # Using an additive model and period=12 (monthly data)
+    try:
+        decomp_result = sm.tsa.seasonal_decompose(df_filtered[selected_decomp], model='additive', period=12)
+        fig3 = decomp_result.plot()
+        fig3.set_size_inches(10, 8)
+        st.pyplot(fig3)
+    except Exception as e:
+        st.error(f"Decomposition error: {e}")
+else:
+    st.write("Select a category for decomposition.")
+
+# ======================
+# 6. Forecasting with Prophet
+# ======================
+st.subheader("Forecasting")
+if selected_forecast:
+    # Prepare data for Prophet: reset index and rename columns
+    df_prophet = df_filtered[[selected_forecast]].reset_index()
+    df_prophet.columns = ["ds", "y"]
+    
+    # Fit Prophet model with adjustable changepoint prior scale
+    model = Prophet(changepoint_prior_scale=cp_scale, weekly_seasonality=False, daily_seasonality=False)
+    try:
+        model.fit(df_prophet)
+        future = model.make_future_dataframe(periods=future_months, freq='MS')
+        forecast = model.predict(future)
+        fig4 = model.plot(forecast)
+        st.pyplot(fig4)
+    except Exception as e:
+        st.error(f"Forecasting error: {e}")
+else:
+    st.write("Select at least one category for forecasting.")
+
+# ======================
+# 7. Data Export Options
+# ======================
+st.subheader("Export Data and Plots")
+# CSV Export of filtered data for selected categories
+if not df_filtered[selected_categories].empty:
+    csv = df_filtered[selected_categories].to_csv().encode('utf-8')
+    st.download_button("Export Data as CSV", csv, "arxiv_data.csv", "text/csv")
+else:
+    st.write("No data available for export.")
+
+# Image Export: allow user to download the comparison plot as PNG
+buf = io.BytesIO()
+fig1.savefig(buf, format="png")
+buf.seek(0)
+st.download_button("Download Comparison Plot as PNG", buf, "comparison_plot.png", "image/png")
+
+'''
+---------------------------------
 st.title("Tracking the Evolution of Science with arXiv Publications")
 st.write("""TBD""")
 
@@ -223,3 +376,5 @@ future_months = st.slider("How many months to predict into the future?",
 if st.button("Generate Forecast"):
     fig = forecast_trends(selected_field_label, future_months)
     st.pyplot(fig)
+
+'''
