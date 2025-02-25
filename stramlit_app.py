@@ -352,7 +352,7 @@ if selected_index_categories:
     
     # Apply smoothing if selected (using a rolling window).
     if apply_smoothing:
-        index_series = index_series.rolling(window=ma_window).mean()
+        index_series = index_series.rolling(window=ma_window).sum()
     
     # Standardize if selected.
     if standardize_index:
