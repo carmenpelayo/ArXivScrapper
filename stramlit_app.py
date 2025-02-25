@@ -240,8 +240,8 @@ else:
 # ======================
 st.subheader("Category Comparison")
 fig1, ax1 = plt.subplots(figsize=(10, 6))
-for col in df_norm.columns:
-    ax1.plot(df_norm.index, df_norm[col], label=col)
+for col in df_std.columns:
+    ax1.plot(df_std.index, df_std[col], label=col)
 ax1.set_title("Monthly Publications Comparison")
 ax1.set_xlabel("Date")
 ax1.set_ylabel("Normalized Value" if normalize else "Publications")
