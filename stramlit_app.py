@@ -173,8 +173,9 @@ arxiv_categories = {
 # ======================
 # 1. Load & Prepare Data
 # ======================
-st.title("ArXiv Publications Dashboard")
-st.write("Explore and forecast trends in monthly arXiv publications.")
+st.title("ArXiv Tracker")
+st.markdown("This app leverages data extracted from arXiv to analyze the **evolution of science worldwide**.")
+st.markdown("**[arXiv](%s)** is an open-access research paper repository covering a wide range of disciplines, including physics, mathematics, computer science, biology, statistics, quantitative finance, economics and electronic engineering. As one of the most important platforms for the early dissemination of research results, arXiv is considered a reliable indicator of global scientific progress.")
 
 # Load the Excel file; assume the date column is the index.
 df = pd.read_excel("arxiv_monthly_publications.xlsx", index_col=0)
