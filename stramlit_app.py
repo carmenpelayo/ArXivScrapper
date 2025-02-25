@@ -185,51 +185,52 @@ df.rename(columns=arxiv_categories, inplace=True)
 # Sidebar Controls
 # ======================
 # ====================== (1) Forecasting Parameters ======================
-st.sidebar.subheader("Forecast Model Settings")
-st.write("Forecasts are calculated with Meta's Prophet model.")
-# Select a category for forecasting
-all_categories = list(arxiv_categories.values())
-selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", all_categories)
-
-# Adjust Prophet’s changepoint prior scale
-cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
-st.write("The `changepoint prior scale` is a regularization term that controls how much the model is allowed to change its trend.")
-st.write("If you suspect the variable is affected by many external events or regime shifts, a higher value might capture those dynamics better. On the other hand, if you think the data is more stable and changes slowly, a lower value might be appropriate.")
-# Number of months to forecast
-future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
-
-st.divider()
-
-# ====================== (2) Category Comparison ======================
-st.sidebar.header("Stats Settings")
-
-# -- Category Selection --
-selected_categories = st.sidebar.multiselect("Select Categories for Examination",
-                                               all_categories, default=all_categories[:3])
-
-# -- Date Range Filter --
-min_date = df.index.min()
-max_date = df.index.max()
-date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date])
-if len(date_range) == 2:
-    df_filtered = df.loc[pd.to_datetime(date_range[0]): pd.to_datetime(date_range[1])]
-else:
-    df_filtered = df.copy()
-
-# -- Standardization Toggle --
-standardize = st.sidebar.checkbox("Standardize Data", value=False)
-if standardize:
-    # Standardize each selected series
-    df_std = (df_filtered[selected_categories] - df_filtered[selected_categories].mean()) / df_filtered[selected_categories].std()
-else:
-    df_std = df_filtered[selected_categories]
-
-st.divider()
-
-# ====================== (3) Time Series Decomposition ======================
-st.sidebar.header("Decomposition Settings")
-# Pick one category for time series decomposition (from the selected list)
-selected_decomp = st.sidebar.selectbox("Select Category for Decomposition", all_categories)
+with st.sidebar:
+    st.subheader("Forecast Model Settings")
+    st.write("Forecasts are calculated with Meta's Prophet model.")
+    # Select a category for forecasting
+    all_categories = list(arxiv_categories.values())
+    selected_forecast = st.selectbox("Select Category for Forecasting", all_categories)
+    
+    # Adjust Prophet’s changepoint prior scale
+    cp_scale = st.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
+    st.write("The `changepoint prior scale` is a regularization term that controls how much the model is allowed to change its trend.")
+    st.write("If you suspect the variable is affected by many external events or regime shifts, a higher value might capture those dynamics better. On the other hand, if you think the data is more stable and changes slowly, a lower value might be appropriate.")
+    # Number of months to forecast
+    future_months = st.slider("Months to Forecast", min_value=3, max_value=48, value=12)
+    
+    st.divider()
+    
+    # ====================== (2) Category Comparison ======================
+    st.header("Stats Settings")
+    
+    # -- Category Selection --
+    selected_categories = st.multiselect("Select Categories for Examination",
+                                                   all_categories, default=all_categories[:3])
+    
+    # -- Date Range Filter --
+    min_date = df.index.min()
+    max_date = df.index.max()
+    date_range = st.date_input("Select Date Range", [min_date, max_date])
+    if len(date_range) == 2:
+        df_filtered = df.loc[pd.to_datetime(date_range[0]): pd.to_datetime(date_range[1])]
+    else:
+        df_filtered = df.copy()
+    
+    # -- Standardization Toggle --
+    standardize = st.checkbox("Standardize Data", value=False)
+    if standardize:
+        # Standardize each selected series
+        df_std = (df_filtered[selected_categories] - df_filtered[selected_categories].mean()) / df_filtered[selected_categories].std()
+    else:
+        df_std = df_filtered[selected_categories]
+    
+    st.divider()
+    
+    # ====================== (3) Time Series Decomposition ======================
+    st.header("Decomposition Settings")
+    # Pick one category for time series decomposition (from the selected list)
+    selected_decomp = st.selectbox("Select Category for Decomposition", all_categories)
 
 # ======================
 #       Dashboard
