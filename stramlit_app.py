@@ -197,7 +197,7 @@ else:
     df_filtered = df.copy()
 
 # -- Category Selection --
-all_categories = list(arxiv_categories.values()
+all_categories = list(arxiv_categories.values())
 selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
                                                all_categories, default=all_categories[:3])
 
