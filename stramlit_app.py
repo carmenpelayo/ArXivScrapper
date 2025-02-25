@@ -184,10 +184,26 @@ df.rename(columns=arxiv_categories, inplace=True)
 # ======================
 # Sidebar Controls
 # ======================
+# ====================== (1) Forecasting Parameters ======================
+st.sidebar.subheader("Forecast Model Settings")
+st.write("Forecasts are calculated with Meta's Prophet model.")
+# Select a category for forecasting
+all_categories = list(arxiv_categories.values())
+if selected_categories:
+    selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", all_categories)
+else:
+    selected_forecast = None
+# Adjust Prophet’s changepoint prior scale
+cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
+st.write("The `changepoint prior scale` is a regularization term that controls how much the model is allowed to change its trend.")
+st.write("If you suspect the variable is affected by many external events or regime shifts, a higher value might capture those dynamics better. On the other hand, if you think the data is more stable and changes slowly, a lower value might be appropriate.")
+# Number of months to forecast
+future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
+
+# ====================== (2) Category Comparison ======================
 st.sidebar.header("Category Comparison Settings")
 
 # -- Category Selection --
-all_categories = list(arxiv_categories.values())
 selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
                                                all_categories, default=all_categories[:3])
 
@@ -200,7 +216,7 @@ if len(date_range) == 2:
 else:
     df_filtered = df.copy()
 
-# -- Normalization Toggle --
+# -- Standardization Toggle --
 standardize = st.sidebar.checkbox("Standardize Data", value=False)
 if standardize:
     # Standardize each selected series
@@ -208,21 +224,36 @@ if standardize:
 else:
     df_std = df_filtered[selected_categories]
 
-# -- Forecasting Parameters --
-st.sidebar.subheader("Forecast Model Settings")
-# Select a category for forecasting (from the ones selected above)
-if selected_categories:
-    selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", selected_categories)
+# ======================
+#       Dashboard
+# ======================
+# ====================== (1) Forecasting ======================
+st.subheader("Forecasting")
+if selected_forecast:
+    # Prepare data for Prophet: reset index and rename columns
+    df_prophet = df_filtered[[selected_forecast]].reset_index()
+    df_prophet.columns = ["ds", "y"]
+    
+    # Fit Prophet model with adjustable changepoint prior scale
+    model = Prophet(changepoint_prior_scale=cp_scale, weekly_seasonality=False, daily_seasonality=False)
+    try:
+        model.fit(df_prophet)
+        future = model.make_future_dataframe(periods=future_months, freq='MS')
+        forecast = model.predict(future)
+        fig1, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", marker='o')
+        ax.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed')
+        ax.set_title(f"Future Predictions for {field_label}")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Publications")
+        ax.legend()
+        ax.grid(True)
+        st.pyplot(fig1)
+    except Exception as e:
+        st.error(f"Forecasting error: {e}")
 else:
-    selected_forecast = None
-# Adjust Prophet’s changepoint prior scale
-cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
-# Number of months to forecast
-future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
+    st.write("Select at least one category for forecasting.")
 
-# ======================
-# 2. Summary Statistics
-# ======================
 st.subheader("Summary Statistics")
 if selected_categories:
     st.write(df_filtered[selected_categories].describe())
@@ -281,24 +312,6 @@ else:
 # ======================
 # 6. Forecasting with Prophet
 # ======================
-st.subheader("Forecasting")
-if selected_forecast:
-    # Prepare data for Prophet: reset index and rename columns
-    df_prophet = df_filtered[[selected_forecast]].reset_index()
-    df_prophet.columns = ["ds", "y"]
-    
-    # Fit Prophet model with adjustable changepoint prior scale
-    model = Prophet(changepoint_prior_scale=cp_scale, weekly_seasonality=False, daily_seasonality=False)
-    try:
-        model.fit(df_prophet)
-        future = model.make_future_dataframe(periods=future_months, freq='MS')
-        forecast = model.predict(future)
-        fig4 = model.plot(forecast)
-        st.pyplot(fig4)
-    except Exception as e:
-        st.error(f"Forecasting error: {e}")
-else:
-    st.write("Select at least one category for forecasting.")
 
 # ======================
 # 7. Data Export Options
