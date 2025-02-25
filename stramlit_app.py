@@ -174,13 +174,13 @@ arxiv_categories = {
 # 1. Load & Prepare Data
 # ======================
 st.title("ArXiv Tracker")
-st.markdown("This app leverages data extracted from arXiv to analyze the **evolution of science worldwide**.")
-st.markdown("**[arXiv](%s)** is an **open-access research paper repository** covering a wide range of disciplines, including physics, mathematics, computer science, biology, statistics, quantitative finance, economics and electronic engineering. As one of the most important platforms for the early dissemination of research results, arXiv is considered a **reliable indicator of global scientific progress**.")
-st.markdown("With this app, you can:")
+st.markdown("This app leverages data extracted from arXiv to analyze the **evolution of science worldwide**. In particular, with this app you can:")
 st.markdown("(1) **Forecast** the future evolution of a certain category.")
 st.markdown("(2) **Numerically and visually analyze** different arXiv categories.")
 st.markdown("(3) **Decompose** a certain category to analyze its time components.")
 st.markdown("(4) **Build your own index** by aggregating categories, smoothing and standardizing.")
+st.markdown("**[arXiv](%s)** is an **open-access research paper repository** covering a wide range of disciplines, including physics, mathematics, computer science, biology, statistics, quantitative finance, economics and electronic engineering. As one of the most important platforms for the early dissemination of research results, arXiv is considered a **reliable indicator of global scientific progress**.")
+st.divider()
 
 # Load the Excel file; assume the date column is the index.
 df = pd.read_excel("arxiv_monthly_publications.xlsx", index_col=0)
@@ -192,7 +192,7 @@ df.rename(columns=arxiv_categories, inplace=True)
 # ======================
 # ====================== (1) Forecasting Parameters ======================
 with st.sidebar:
-    st.subheader("📈 Forecasting Settings")
+    st.subheader("📈 (1) Forecasting Settings")
     
     # Select a category for forecasting
     all_categories = list(arxiv_categories.values())
@@ -202,7 +202,7 @@ with st.sidebar:
     future_months = st.slider("Months to Forecast", min_value=3, max_value=48, value=12)
     
     # ====================== (2) Category Comparison ======================
-    st.header("📊 Statistics Settings")
+    st.header("📊 (2) Statistics Settings")
     
     # -- Category Selection --
     selected_categories = st.multiselect("Select Categories for Examination",
@@ -226,15 +226,33 @@ with st.sidebar:
         df_std = df_filtered[selected_categories]
     
     # ====================== (3) Time Series Decomposition ======================
-    st.header("⏱️ Decomposition Settings")
+    st.header("⏱️ (2) Decomposition Settings")
     # Pick one category for time series decomposition (from the selected list)
-    selected_decomp = st.selectbox("Select Category for Decomposition", all_categories)
+    selected_decomp = st.selectbox("Select Category for Decomposition", all_categories)ç
+
+    # ====================== (4) Custom Index ======================
+    st.header("🛠️ (4) Build Your Own Index")
+    # Select categories to aggregate for the index
+    selected_index_categories = st.multiselect(
+        "Select Categories to Aggregate for Index",
+        all_categories, 
+        default=all_categories[:3]
+    )
+    # Aggregation method: Sum or Average
+    agg_method = st.selectbox("Aggregation Method", ["Sum", "Average"])
+    # Option to apply smoothing (moving average)
+    apply_smoothing = st.checkbox("Apply Smoothing (Moving Average)", value=False)
+    if apply_smoothing:
+        ma_window = st.slider("Moving Average Window (months)", min_value=1, max_value=12, value=3)
+    # Option to standardize the aggregated index
+    standardize_index = st.checkbox("Standardize Index", value=False)
+
 
 # ======================
 #       Dashboard
 # ======================
 # ====================== (1) Forecasting ======================
-st.subheader("📈 Forecasting")
+st.subheader("📈 (1) Forecasting")
 url = "https://facebook.github.io/prophet/"
 st.write("Here you can **forecast the evolution** of your category with Meta's [Prophet](%s) model." % url)
 if selected_forecast:
@@ -265,7 +283,7 @@ else:
 st.divider()
 
 # ====================== (2) Stats ======================
-st.subheader("📊 Statistics")
+st.subheader("📊 (2) Statistics")
 
 # -- Visualization
 st.markdown("Visualize how your selected categories **perform over time**.")
@@ -302,7 +320,7 @@ st.divider()
 # ======================
 # Time Series Decomposition
 # ======================
-st.subheader("⏱️ Time Series Decomposition")
+st.subheader("⏱️ (3) Time Series Decomposition")
 st.markdown("Here you can decompose your selected category into the **trend**, **seasonality** and **residuals** for better understanding of its performance over time.")
 url2 = "https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html"
 st.markdown("See the **decomposition methodology** [here](%s)." % url2)
@@ -317,6 +335,39 @@ if selected_decomp:
         st.error(f"Decomposition error: {e}")
 else:
     st.write("Select a category for decomposition.")
+
+st.divider()
+
+# ====================== (4) Custom Index ======================
+st.subheader("🛠️ (4) Build Your Own Index")
+if selected_index_categories:
+    # Extract the selected categories from the filtered DataFrame.
+    df_index = df_filtered[selected_index_categories].copy()
+    
+    # Aggregate data according to the chosen method.
+    if agg_method == "Sum":
+        index_series = df_index.sum(axis=1)
+    else:  # "Average"
+        index_series = df_index.mean(axis=1)
+    
+    # Apply smoothing if selected (using a rolling window).
+    if apply_smoothing:
+        index_series = index_series.rolling(window=ma_window).mean()
+    
+    # Standardize if selected.
+    if standardize_index:
+        index_series = (index_series - index_series.mean()) / index_series.std()
+    
+    # Plot the custom index.
+    fig_index, ax_index = plt.subplots(figsize=(10, 5))
+    ax_index.plot(index_series.index, index_series, marker='o')
+    ax_index.set_title("Custom Aggregated Index")
+    ax_index.set_xlabel("Date")
+    ax_index.set_ylabel("Index Value")
+    ax_index.grid(True)
+    st.pyplot(fig_index)
+else:
+    st.write("Please select at least one category to build the index.")
 
 st.divider()
     
