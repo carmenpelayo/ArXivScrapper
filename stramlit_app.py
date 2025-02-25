@@ -228,7 +228,7 @@ with st.sidebar:
     # ====================== (3) Time Series Decomposition ======================
     st.header("⏱️ (2) Decomposition Settings")
     # Pick one category for time series decomposition (from the selected list)
-    selected_decomp = st.selectbox("Select Category for Decomposition", all_categories)ç
+    selected_decomp = st.selectbox("Select Category for Decomposition", all_categories)
 
     # ====================== (4) Custom Index ======================
     st.header("🛠️ (4) Build Your Own Index")
