@@ -7,3 +7,6 @@ prophet
 logging
 openpyxl
 datetime
+seaborn
+statsmodels
+io
