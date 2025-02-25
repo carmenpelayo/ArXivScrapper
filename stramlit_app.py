@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 from prophet import Prophet
 import logging
 logging.getLogger('cmdstanpy').setLevel(logging.ERROR)
@@ -172,7 +173,9 @@ st.title("Tracking the Evolution of Science with arXiv Publications")
 st.write("""TBD""")
 
 # Data processing
-df = pd.read_excel("arxiv_monthly_publications.xlsx")
+df = pd.read_excel("arxiv_monthly_publications.xlsx", sheet_name="raw", index_col=0)
+df.index = pd.to_datetime(df.index)
+df = df[df.index <= "2025-01"]
 
 # Interactive function for forecasting
 def forecast_trends(field_label, future_months):
