@@ -189,10 +189,8 @@ st.sidebar.subheader("Forecast Model Settings")
 st.write("Forecasts are calculated with Meta's Prophet model.")
 # Select a category for forecasting
 all_categories = list(arxiv_categories.values())
-if selected_categories:
-    selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", all_categories)
-else:
-    selected_forecast = None
+selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", all_categories)
+
 # Adjust Prophet’s changepoint prior scale
 cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
 st.write("The `changepoint prior scale` is a regularization term that controls how much the model is allowed to change its trend.")
@@ -201,10 +199,10 @@ st.write("If you suspect the variable is affected by many external events or reg
 future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
 
 # ====================== (2) Category Comparison ======================
-st.sidebar.header("Category Comparison Settings")
+st.sidebar.header("Stats Settings")
 
 # -- Category Selection --
-selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
+selected_categories = st.sidebar.multiselect("Select Categories for Examination",
                                                all_categories, default=all_categories[:3])
 
 # -- Date Range Filter --
@@ -224,6 +222,11 @@ if standardize:
 else:
     df_std = df_filtered[selected_categories]
 
+# ====================== (3) Time Series Decomposition ======================
+st.sidebar.header("Decomposition Settings")
+# Pick one category for time series decomposition (from the selected list)
+selected_decomp = st.sidebar.selectbox("Select Category for Decomposition", all_categories)
+
 # ======================
 #       Dashboard
 # ======================
@@ -240,81 +243,68 @@ if selected_forecast:
         model.fit(df_prophet)
         future = model.make_future_dataframe(periods=future_months, freq='MS')
         forecast = model.predict(future)
-        fig1, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", marker='o')
-        ax.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed')
-        ax.set_title(f"Future Predictions for {field_label}")
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Publications")
-        ax.legend()
-        ax.grid(True)
+        fig1, ax1 = plt.subplots(figsize=(10, 5))
+        ax1.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", marker='o')
+        ax1.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed')
+        ax1.set_title(f"Predicted Monthly Publications for {field_label}")
+        ax1.set_xlabel("Year")
+        ax1.set_ylabel("ArXiv Monthly Publications")
+        ax1.legend()
+        ax1.grid(True)
         st.pyplot(fig1)
     except Exception as e:
         st.error(f"Forecasting error: {e}")
 else:
-    st.write("Select at least one category for forecasting.")
+    st.write("Select a category for forecasting.")
 
-st.subheader("Summary Statistics")
+# ====================== (2) Stats ======================
+st.subheader("Statistics")
+
+# -- Visualization
+fig2, ax2 = plt.subplots(figsize=(10, 6))
+for col in df_std.columns:
+    ax2.plot(df_std.index, df_std[col], label=col)
+ax2.set_title("Monthly Publications Comparison")
+ax2.set_xlabel("Date")
+ax2.set_ylabel("Standardized Value" if standardize else "Publications")
+ax2.legend()
+ax2.grid(True)
+st.pyplot(fig2)
+
+# -- Summary stats
 if selected_categories:
     st.write(df_filtered[selected_categories].describe())
 else:
     st.write("Please select at least one category.")
-# -- Decomposition --
-# Pick one category for time series decomposition (from the selected list)
-if selected_categories:
-    selected_decomp = st.sidebar.selectbox("Select Category for Decomposition", selected_categories)
-else:
-    selected_decomp = None
 
-# ======================
-# 3. Interactive Comparison Plot
-# ======================
-st.subheader("Category Comparison")
-fig1, ax1 = plt.subplots(figsize=(10, 6))
-for col in df_std.columns:
-    ax1.plot(df_std.index, df_std[col], label=col)
-ax1.set_title("Monthly Publications Comparison")
-ax1.set_xlabel("Date")
-ax1.set_ylabel("Standardized Value" if standardize else "Publications")
-ax1.legend()
-ax1.grid(True)
-st.pyplot(fig1)
-
-# ======================
-# 4. Correlation Heatmap
-# ======================
-st.subheader("Correlation Heatmap")
+# -- Correlation heatmap
 if selected_categories:
     corr = df_filtered[selected_categories].corr()
-    fig2, ax2 = plt.subplots(figsize=(8, 6))
-    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax2)
-    ax2.set_title("Correlation between Categories")
-    st.pyplot(fig2)
+    fig3, ax3 = plt.subplots(figsize=(8, 6))
+    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax3)
+    ax3.set_title("Correlation between Categories")
+    st.pyplot(fig3)
 else:
     st.write("Please select categories to view the correlation heatmap.")
 
 # ======================
-# 5. Time Series Decomposition
+# Time Series Decomposition
 # ======================
 st.subheader("Time Series Decomposition")
 if selected_decomp:
     # Using an additive model and period=12 (monthly data)
     try:
         decomp_result = sm.tsa.seasonal_decompose(df_filtered[selected_decomp], model='additive', period=12)
-        fig3 = decomp_result.plot()
-        fig3.set_size_inches(10, 8)
-        st.pyplot(fig3)
+        fig4 = decomp_result.plot()
+        fig4.set_size_inches(10, 8)
+        st.pyplot(fig4)
     except Exception as e:
         st.error(f"Decomposition error: {e}")
 else:
     st.write("Select a category for decomposition.")
-
+    
 # ======================
-# 6. Forecasting with Prophet
-# ======================
-
-# ======================
-# 7. Data Export Options
+# Data Export Options
 # ======================
 st.subheader("Export Data")
 # CSV Export of filtered data for selected categories
