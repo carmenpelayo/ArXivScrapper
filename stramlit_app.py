@@ -169,7 +169,6 @@ arxiv_categories = {
     "stat.OT": "Other Statistics",
     "stat.TH": "Statistics Theory"
 }
-inverted_dict = {v: k for k, v in arxiv_categories.items()}
 
 # ======================
 # 1. Load & Prepare Data
@@ -180,11 +179,17 @@ st.write("Explore and forecast trends in monthly arXiv publications.")
 # Load the Excel file; assume the date column is the index.
 df = pd.read_excel("arxiv_monthly_publications.xlsx", index_col=0)
 df.index = pd.to_datetime(df.index)
+df.rename(columns=arxiv_categories, inplace=True)
 
 # ======================
 # Sidebar Controls
 # ======================
-st.sidebar.header("Filter and Settings")
+st.sidebar.header("Category Comparison Settings")
+
+# -- Category Selection --
+all_categories = list(arxiv_categories.values())
+selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
+                                               all_categories, default=all_categories[:3])
 
 # -- Date Range Filter --
 min_date = df.index.min()
@@ -195,39 +200,25 @@ if len(date_range) == 2:
 else:
     df_filtered = df.copy()
 
-# -- Category Selection --
-all_categories = list(arxiv_categories.values())
-selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
-                                               all_categories, default=all_categories[:3])
-selected_categories = [inverted_dict[label] for label in selected_categories]
-
 # -- Normalization Toggle --
-normalize = st.sidebar.checkbox("Normalize Data", value=False)
-if normalize:
-    # Normalize each selected series to the [0,1] range
-    df_norm = (df_filtered[selected_categories] - df_filtered[selected_categories].min()) / (
-                df_filtered[selected_categories].max() - df_filtered[selected_categories].min())
+standardize = st.sidebar.checkbox("Standardize Data", value=False)
+if standardize:
+    # Standardize each selected series
+    df_std = (df_filtered[selected_categories] - df_filtered[selected_categories].mean()) / df_filtered[selected_categories].std()
 else:
-    df_norm = df_filtered[selected_categories]
+    df_std = df_filtered[selected_categories]
 
 # -- Forecasting Parameters --
 st.sidebar.subheader("Forecast Model Settings")
-# Adjust Prophet’s changepoint prior scale
-cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
 # Select a category for forecasting (from the ones selected above)
 if selected_categories:
     selected_forecast = st.sidebar.selectbox("Select Category for Forecasting", selected_categories)
 else:
     selected_forecast = None
+# Adjust Prophet’s changepoint prior scale
+cp_scale = st.sidebar.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
 # Number of months to forecast
 future_months = st.sidebar.slider("Months to Forecast", min_value=3, max_value=48, value=12)
-
-# -- Decomposition --
-# Pick one category for time series decomposition (from the selected list)
-if selected_categories:
-    selected_decomp = st.sidebar.selectbox("Select Category for Decomposition", selected_categories)
-else:
-    selected_decomp = None
 
 # ======================
 # 2. Summary Statistics
@@ -237,6 +228,12 @@ if selected_categories:
     st.write(df_filtered[selected_categories].describe())
 else:
     st.write("Please select at least one category.")
+# -- Decomposition --
+# Pick one category for time series decomposition (from the selected list)
+if selected_categories:
+    selected_decomp = st.sidebar.selectbox("Select Category for Decomposition", selected_categories)
+else:
+    selected_decomp = None
 
 # ======================
 # 3. Interactive Comparison Plot
@@ -306,69 +303,10 @@ else:
 # ======================
 # 7. Data Export Options
 # ======================
-st.subheader("Export Data and Plots")
+st.subheader("Export Data")
 # CSV Export of filtered data for selected categories
 if not df_filtered[selected_categories].empty:
     csv = df_filtered[selected_categories].to_csv().encode('utf-8')
     st.download_button("Export Data as CSV", csv, "arxiv_data.csv", "text/csv")
 else:
     st.write("No data available for export.")
-
-'''
----------------------------------
-st.title("Tracking the Evolution of Science with arXiv Publications")
-st.write("""TBD""")
-
-# Data processing
-df = pd.read_excel("arxiv_monthly_publications.xlsx", sheet_name="raw", index_col=0)
-df.index = pd.to_datetime(df.index)
-df = df[df.index <= "2025-01"]
-
-# Interactive function for forecasting
-def forecast_trends(field_label, future_months):
-    """
-    field_label: El nombre descriptivo elegido por el usuario (p.ej. "Cosmology and Nongalactic Astrophysics")
-    future_months: Entero con el número de meses a predecir
-    """
-    # Obtener la clave real del DataFrame a partir del nombre legible
-    real_key = inverted_dict[field_label]
-
-    # Preparar datos para Prophet
-    df_prophet = df[[real_key]].reset_index()  # asumiendo que df tiene un DatetimeIndex
-    df_prophet.columns = ["ds", "y"]
-
-    model = Prophet(weekly_seasonality=False, daily_seasonality=False)
-    model.fit(df_prophet)
-
-    future = model.make_future_dataframe(periods=future_months, freq='MS')  # 'MS' = start of month
-    forecast = model.predict(future)
-
-    # Crear la figura con matplotlib
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", marker='o')
-    ax.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed')
-    ax.set_title(f"Future Predictions for {field_label}")
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Publications")
-    ax.legend()
-    ax.grid(True)
-
-    # Devolver la figura para que Streamlit la muestre
-    return fig
-
-# 1) Selectbox con los nombres de las categorías
-selected_field_label = st.selectbox(
-    "Which arXiv category would you like to visualize?",
-    list(arxiv_categories.values())  # Muestra los valores legibles
-)
-
-# 2) Slider para elegir meses a predecir
-future_months = st.slider("How many months to predict into the future?", 
-                          min_value=3, max_value=48, value=12)
-
-# 3) Botón o acción directa para generar la predicción
-if st.button("Generate Forecast"):
-    fig = forecast_trends(selected_field_label, future_months)
-    st.pyplot(fig)
-
-'''
