@@ -199,6 +199,7 @@ else:
 all_categories = list(arxiv_categories.values())
 selected_categories = st.sidebar.multiselect("Select Categories for Comparison",
                                                all_categories, default=all_categories[:3])
+selected_categories = [inverted_dict[label] for label in selected_categories]
 
 # -- Normalization Toggle --
 normalize = st.sidebar.checkbox("Normalize Data", value=False)
