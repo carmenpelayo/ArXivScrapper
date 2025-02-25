@@ -244,7 +244,7 @@ for col in df_std.columns:
     ax1.plot(df_std.index, df_std[col], label=col)
 ax1.set_title("Monthly Publications Comparison")
 ax1.set_xlabel("Date")
-ax1.set_ylabel("Normalized Value" if normalize else "Publications")
+ax1.set_ylabel("Standardized Value" if standardize else "Publications")
 ax1.legend()
 ax1.grid(True)
 st.pyplot(fig1)
