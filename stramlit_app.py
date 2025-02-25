@@ -173,7 +173,6 @@ st.write("""TBD""")
 
 # Data processing
 df = pd.read_excel("arxiv_monthly_publications.xlsx")
-selected_field = st.selectbox("Which arXiv category would you like to visualize?", arxiv_categories.values())
 
 # Interactive function for forecasting
 def forecast_trends(field_label, future_months):
