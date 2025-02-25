@@ -187,15 +187,12 @@ df.rename(columns=arxiv_categories, inplace=True)
 # ====================== (1) Forecasting Parameters ======================
 with st.sidebar:
     st.subheader("Forecast Model Settings")
-    st.write("Forecasts are calculated with Meta's Prophet model.")
     # Select a category for forecasting
     all_categories = list(arxiv_categories.values())
     selected_forecast = st.selectbox("Select Category for Forecasting", all_categories)
     
     # Adjust Prophet’s changepoint prior scale
     cp_scale = st.slider("Changepoint Prior Scale", 0.001, 0.5, 0.05, step=0.001)
-    st.write("The `changepoint prior scale` is a regularization term that controls how much the model is allowed to change its trend.")
-    st.write("If you suspect the variable is affected by many external events or regime shifts, a higher value might capture those dynamics better. On the other hand, if you think the data is more stable and changes slowly, a lower value might be appropriate.")
     # Number of months to forecast
     future_months = st.slider("Months to Forecast", min_value=3, max_value=48, value=12)
     
@@ -236,7 +233,9 @@ with st.sidebar:
 #       Dashboard
 # ======================
 # ====================== (1) Forecasting ======================
-st.subheader("Forecasting")
+st.subheader("📈 Forecasting")
+url = "https://facebook.github.io/prophet/"
+st.write("Here you can forecast the evolution of your science category with Meta's [Prophet](%s) model." % url)
 if selected_forecast:
     # Prepare data for Prophet: reset index and rename columns
     df_prophet = df_filtered[[selected_forecast]].reset_index()
@@ -265,7 +264,7 @@ else:
 st.divider()
 
 # ====================== (2) Stats ======================
-st.subheader("Statistics")
+st.subheader("📊 Statistics")
 
 # -- Visualization
 fig2, ax2 = plt.subplots(figsize=(10, 6))
@@ -299,7 +298,7 @@ st.divider()
 # ======================
 # Time Series Decomposition
 # ======================
-st.subheader("Time Series Decomposition")
+st.subheader("⏱️ Time Series Decomposition")
 if selected_decomp:
     # Using an additive model and period=12 (monthly data)
     try:
@@ -315,10 +314,10 @@ else:
 # ======================
 # Data Export Options
 # ======================
-st.subheader("Export Data")
+st.subheader("💾 Data Export")
 # CSV Export of filtered data for selected categories
 if not df_filtered[selected_categories].empty:
     csv = df_filtered[selected_categories].to_csv().encode('utf-8')
-    st.download_button("Export Data as CSV", csv, "arxiv_data.csv", "text/csv")
+    st.download_button("Export data as CSV", csv, "arxiv_data.csv", "text/csv")
 else:
     st.write("No data available for export.")
