@@ -6,6 +6,12 @@ This repository contains Python code to **measure the evolution of science world
 
 The objective of this project is to provide Python code that enables the user to easily extract time series of monthly volume of publications in different [arXiv categories](https://arxiv.org/category_taxonomy). These series allow to identify trends, growth patterns, and emerging research areas, providing a valuable database for scientific and strategic analysis.
 
+Additionally, a web app was created to leverage the extracted data: **[link](https://arxivtracker.streamlit.app/)**. It can be used to:
+1.  Forecast the future evolution of a certain category.
+2.  Numerically and visually analyze different arXiv categories.
+3.  Decompose a certain category to analyze its time components.
+4.  Build your own index by aggregating categories, smoothing and standardizing.
+
 ## Methodology
 
 The project's methodology focuses on:
