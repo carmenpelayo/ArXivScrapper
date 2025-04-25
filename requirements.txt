@@ -4,10 +4,6 @@ numpy
 plotly
 matplotlib
 prophet
-logging
 openpyxl
-datetime
 seaborn
 statsmodels
-sqlite3
-logging
