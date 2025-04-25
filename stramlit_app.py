@@ -1,3 +1,389 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import sqlite3
+import statsmodels.api as sm
+from prophet import Prophet
+from datetime import datetime
+from streamlit.components.v1 import html
+import plotly.express as px
+import logging
+
+# ────────────────────────────────────────────────────────────────
+#  Silence verbose logs
+logging.getLogger('cmdstanpy').setLevel(logging.ERROR)
+logging.getLogger('prophet').setLevel(logging.ERROR)
+
+# ────────────────────────────────────────────────────────────────
+#  Corporate color palette (for Plotly & Matplotlib)
+bbva_colors = [
+    "#004481", "#2DCCCC", "#1464A5", "#D8BE75", "#1973B8",
+    "#F7893B", "#5BBEFF", "#F8CD51", "#48AE64", "#02A5A5", "#F7B8E8"
+]
+# Apply to Plotly
+px.defaults.color_discrete_sequence = bbva_colors
+# Apply to Matplotlib
+plt.rcParams['axes.prop_cycle'] = plt.cycler(color=bbva_colors)
+
+# ────────────────────────────────────────────────────────────────
+#  Prevent sleeping: lightweight JS ping every 2 minutes
+html(
+    """
+    <script>
+      setInterval(function(){
+        fetch(window.location.href, {mode:'no-cors'});
+      }, 120000);
+    </script>
+    """,
+    height=0
+)
+
+# ────────────────────────────────────────────────────────────────
+#  Visitor counter (SQLite-backed, increments once per session)
+conn = sqlite3.connect("visits.db")
+c = conn.cursor()
+c.execute("CREATE TABLE IF NOT EXISTS visits(count INTEGER)")
+c.execute("SELECT count FROM visits")
+row = c.fetchone()
+if row is None:
+    c.execute("INSERT INTO visits(count) VALUES (0)")
+    conn.commit()
+
+if "visited" not in st.session_state:
+    c.execute("UPDATE visits SET count = count + 1")
+    conn.commit()
+    st.session_state.visited = True
+
+c.execute("SELECT count FROM visits")
+visit_count = c.fetchone()[0]
+conn.close()
+
+# ────────────────────────────────────────────────────────────────
+#  Inject Lato font + minor CSS tweaks
+st.markdown(
+    """
+    <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
+    <style>
+      html, body, [class*="css"] {
+        font-family: 'Lato', sans-serif !important;
+      }
+      .stButton>button {
+        background-color: #004481 !important;
+        color: #ffffff !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ────────────────────────────────────────────────────────────────
+#  Load Data
+df_raw = pd.read_excel("arxiv_monthly_publications.xlsx", index_col=0)
+df_raw.index = pd.to_datetime(df_raw.index)
+
+# full category mapping here…
+arxiv_categories = {
+    'astro-ph.CO': 'Cosmology and Nongalactic Astrophysics',
+    'astro-ph.EP': 'Earth and Planetary Astrophysics',
+    'astro-ph.GA': 'Astrophysics of Galaxies',
+    'astro-ph.HE': 'High Energy Astrophysical Phenomena',
+    'astro-ph.IM': 'Instrumentation and Methods for Astrophysics',
+    'astro-ph.SR': 'Solar and Stellar Astrophysics',
+    'cond-mat.dis-nn': 'Disordered Systems and Neural Networks',
+    'cond-mat.mes-hall': 'Mesoscale and Nanoscale Physics',
+    'cond-mat.mtrl-sci': 'Materials Science',
+    'cond-mat.other': 'Other Condensed Matter',
+    'cond-mat.quant-gas': 'Quantum Gases',
+    'cond-mat.soft': 'Soft Condensed Matter',
+    'cond-mat.stat-mech': 'Statistical Mechanics',
+    'cond-mat.str-el': 'Strongly Correlated Electrons',
+    'cond-mat.supr-con': 'Superconductivity',
+    'cs.AI': 'Artificial Intelligence',
+    'cs.AR': 'Hardware Architecture',
+    'cs.CC': 'Computational Complexity',
+    'cs.CE': 'Computational Engineering, Finance, and Science',
+    'cs.CG': 'Computational Geometry',
+    'cs.CL': 'Computation and Language',
+    'cs.CR': 'Cryptography and Security',
+    'cs.CV': 'Computer Vision and Pattern Recognition',
+    'cs.CY': 'Computers and Society',
+    'cs.DB': 'Databases',
+    'cs.DC': 'Distributed, Parallel, and Cluster Computing',
+    'cs.DL': 'Digital Libraries',
+    'cs.DM': 'Discrete Mathematics',
+    'cs.DS': 'Data Structures and Algorithms',
+    'cs.ET': 'Emerging Technologies',
+    'cs.FL': 'Formal Languages and Automata Theory',
+    'cs.GL': 'General Literature',
+    'cs.GR': 'Graphics',
+    'cs.GT': 'Computer Science and Game Theory',
+    'cs.HC': 'Human-Computer Interaction',
+    'cs.IR': 'Information Retrieval',
+    'cs.IT': 'Information Theory',
+    'cs.LG': 'Machine Learning',
+    'cs.LO': 'Logic in Computer Science',
+    'cs.MA': 'Multiagent Systems',
+    'cs.MM': 'Multimedia',
+    'cs.MS': 'Mathematical Software',
+    'cs.NA': 'Numerical Analysis',
+    'cs.NE': 'Neural and Evolutionary Computing',
+    'cs.NI': 'Networking and Internet Architecture',
+    'cs.OH': 'Other Computer Science',
+    'cs.OS': 'Operating Systems',
+    'cs.PF': 'Performance',
+    'cs.PL': 'Programming Languages',
+    'cs.RO': 'Robotics',
+    'cs.SC': 'Symbolic Computation',
+    'cs.SD': 'Sound',
+    'cs.SE': 'Software Engineering',
+    'cs.SI': 'Social and Information Networks',
+    'cs.SY': 'Systems and Control',
+    'gr-qc': 'General Relativity and Quantum Cosmology',
+    'hep-ex': 'High Energy Physics - Experiment',
+    'hep-lat': 'High Energy Physics - Lattice',
+    'hep-ph': 'High Energy Physics - Phenomenology',
+    'hep-th': 'High Energy Physics - Theory',
+    'math-ph': 'Mathematical Physics',
+    "math.AC": "Commutative Algebra",
+    'math.AG': 'Algebraic Geometry',
+    'math.AP': 'Analysis of PDEs',
+    'math.AT': 'Algebraic Topology',
+    'math.CA': 'Classical Analysis and ODEs',
+    'math.CO': 'Combinatorics',
+    'math.CT': 'Category Theory',
+    'math.CV': 'Complex Variables',
+    'math.DG': 'Differential Geometry',
+    'math.DS': 'Dynamical Systems',
+    'math.FA': 'Functional Analysis',
+    'math.GM': 'General Mathematics',
+    'math.GN': 'General Topology',
+    'math.GR': 'Group Theory',
+    'math.GT': 'Geometric Topology',
+    'math.HO': 'History and Overview',
+    'math.IT': 'Information Theory',
+    'math.KT': 'K-Theory and Homology',
+    'math.LO': 'Logic',
+    'math.MG': 'Metric Geometry',
+    "math.MP": "Mathematical Physics",
+    'math.NA': 'Numerical Analysis',
+    'math.NT': 'Number Theory',
+    'math.OA': 'Operator Algebras',
+    'math.OC': 'Optimization and Control',
+    'math.PR': 'Probability',
+    'math.QA': 'Quantum Algebra',
+    'math.RA': 'Rings and Algebras',
+    'math.RT': 'Representation Theory',
+    'math.SG': 'Symplectic Geometry',
+    'math.SP': 'Spectral Theory',
+    'math.ST': 'Statistics Theory',
+    'nlin.AO': 'Adaptation and Self-Organizing Systems',
+    'nlin.CD': 'Chaotic Dynamics',
+    'nlin.CG': 'Cellular Automata and Lattice Gases',
+    'nlin.PS': 'Pattern Formation and Solitons',
+    'nlin.SI': 'Exactly Solvable and Integrable Systems',
+    'nucl-ex': 'Nuclear Experiment',
+    'nucl-th': 'Nuclear Theory',
+    'physics.acc-ph': 'Accelerator Physics',
+    "physics.ao-ph": "Atmospheric and Oceanic Physics",
+    'physics.app-ph': 'Applied Physics',
+    "physics.atm-clus": "Atomic and Molecular Clusters",
+    'physics.atom-ph': 'Atomic Physics',
+    'physics.bio-ph': 'Biological Physics',
+    'physics.chem-ph': 'Chemical Physics',
+    "physics.class-ph": "Classical Physics",
+    'physics.comp-ph': 'Computational Physics',
+    'physics.data-an': 'Data Analysis, Statistics and Probability',
+    'physics.ed-ph': 'Physics Education',
+    'physics.flu-dyn': 'Fluid Dynamics',
+    'physics.gen-ph': 'General Physics',
+    'physics.geo-ph': 'Geophysics',
+    'physics.hist-ph': 'History and Philosophy of Physics',
+    'physics.ins-det': 'Instrumentation and Detectors',
+    'physics.med-ph': 'Medical Physics',
+    'physics.optics': 'Optics',
+    "physics.plasm-ph": "Plasma Physics",
+    "physics.pop-ph": "Popular Physics",
+    'physics.soc-ph': 'Physics and Society',
+    'physics.space-ph': 'Space Physics',
+    'quant-ph': 'Quantum Physics',
+    "stat.AP": "Applications",
+    "stat.CO": "Computation",
+    "stat.ME": "Methodology",
+    "stat.ML": "Machine Learning",
+    "stat.OT": "Other Statistics",
+    "stat.TH": "Statistics Theory"
+}
+df = df_raw.rename(columns=arxiv_categories)
+
+# ────────────────────────────────────────────────────────────────
+#  Multi‐page app
+st.sidebar.title("🖥️ Navigation")
+st.sidebar.markdown(f"👁️ Total visits: **{visit_count}**")
+page = st.sidebar.radio("Go to", ["📖 Documentation", "🛠 Dashboard"])
+
+# ────────────────────────────────────────────────────────────────
+if page == "📖 Documentation":
+    st.title("ArXiv Tracker — Documentation")
+    st.header("Motivation")
+    st.markdown(
+        """
+        - **Hyperconnected world** → traditional metrics lag by quarters/years  
+        - **Need**: real-time, month-to-month indicators  
+        - **Solution**: arXiv preprint counts as a research thermometer  
+        """
+    )
+    st.header("Suggested Use Cases")
+    st.markdown(
+        """
+        1. **Impact of funding cuts**: track R&D budget changes in real-time  
+        2. **Synergies**: spot cross-disciplinary hot spots (e.g. quantum × AI)  
+        3. **Forecasting shocks**: early warning for emerging tech (robotics, new materials)
+        """
+    )
+    st.header("Methodology")
+    st.markdown(
+        """
+        - **Scraping** monthly lists from arXiv.org with Python  
+        - **No heavy cleaning**: simply count papers per category (1991–present)  
+        - **129 indicators**: 40 CS, 51 physics, 38 math/stats
+        """
+    )
+    st.header("Validation")
+    st.markdown(
+        """
+        - **CS vs. Dimensions**: arXiv tracks total publications nearly identically since 2012.  
+        - **AI vs. Stanford AI Index**: arXiv often leads by a few months, capturing GenAI trends early.
+        """
+    )
+    st.subheader("Example: CS / Physics / Math Trends")
+    # build group sums
+    cs_cols = [c for c in df_raw if c.startswith("cs.")]
+    math_cols = [c for c in df_raw if c.startswith("math.") or c.startswith("stat.")]
+    phys_cols = [c for c in df_raw if c not in cs_cols + math_cols]
+    grp = pd.DataFrame({
+        "Computer Science": df_raw[cs_cols].sum(axis=1),
+        "Math & Stats":     df_raw[math_cols].sum(axis=1),
+        "Physics":          df_raw[phys_cols].sum(axis=1),
+    })
+    fig = px.line(
+        grp.reset_index(), x="index", y=grp.columns,
+        labels={"index":"Date","value":"Monthly Preprints"},
+        title="Monthly Volume by Major Field"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.header("Limitations")
+    st.markdown(
+        """
+        - **Quality variance** (no peer review)  
+        - **Overlap** (papers can appear in up to 3 categories)  
+        - **Adoption bias** (CS only took off on arXiv after ~2012)
+        """
+    )
+    st.header("Future Work")
+    st.markdown(
+        """
+        - Integrate SSRN, ResearchSquare, Preprints.org  
+        - Add **citation**-based impact indicators  
+        - Extend to **bioRxiv**, **medRxiv**, etc.
+        """
+    )
+
+else:
+    st.title("ArXiv Tracker — Dashboard")
+
+    # ────────────────────────────────────────────────────────────────
+    #  Global date filter
+    st.sidebar.header("📅 Date Filter")
+    lo, hi = df.index.min(), df.index.max()
+    dr = st.sidebar.date_input("Range", [lo, hi])
+    if len(dr)==2:
+        df_filt     = df.loc[dr[0]:dr[1]]
+        df_raw_filt = df_raw.loc[dr[0]:dr[1]]
+    else:
+        df_filt, df_raw_filt = df, df_raw
+
+    # ────────────────────────────────────────────────────────────────
+    #  1) Forecasting w/ optional smoothing
+    st.header("1️⃣ Forecasting")
+    fc_cat = st.selectbox("Category", list(arxiv_categories.values()))
+    months = st.slider("→ Months ahead", 3, 48, 12)
+    if st.checkbox("Smooth history?"):
+        w = st.slider("Window (months)", 1, 12, 3)
+        sf = df_filt[[fc_cat]].rolling(w).mean().dropna()
+    else:
+        sf = df_filt[[fc_cat]]
+    dfp = sf.reset_index().rename(columns={"index":"ds", fc_cat:"y"})
+    m = Prophet(weekly_seasonality=False, daily_seasonality=False)
+    m.fit(dfp)
+    future = m.make_future_dataframe(periods=months, freq="MS")
+    fc = m.predict(future)
+    fig1 = px.line(fc, x="ds", y="yhat", labels={"ds":"Date","yhat":"Predicted"})
+    fig1.add_scatter(x=dfp["ds"], y=dfp["y"], mode="markers", name="Actual")
+    fig1.update_layout(title=f"Forecast for {fc_cat}")
+    st.plotly_chart(fig1, use_container_width=True)
+
+    # ────────────────────────────────────────────────────────────────
+    #  2) Decomposition
+    st.header("2️⃣ Decomposition")
+    dc = st.selectbox("Decompose", list(arxiv_categories.values()))
+    try:
+        dc_res = sm.tsa.seasonal_decompose(df_filt[dc], model="additive", period=12)
+        fig2 = dc_res.plot()
+        fig2.set_size_inches(10, 8)
+        st.pyplot(fig2)
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+    # ────────────────────────────────────────────────────────────────
+    #  3) Custom Index
+    st.header("3️⃣ Custom Index")
+    idx_cats = st.multiselect("Pick categories", list(arxiv_categories.values()), default=list(arxiv_categories.values())[:3])
+    agg = st.selectbox("Agg method", ["Sum", "Average"])
+    if st.checkbox("Smooth index?"):
+        w2 = st.slider("Index window", 1, 12, 3)
+    std = st.checkbox("Standardize index")
+    if idx_cats:
+        s = df_filt[idx_cats].sum(axis=1) if agg=="Sum" else df_filt[idx_cats].mean(axis=1)
+        if 'w2' in locals(): s = s.rolling(w2).mean().dropna()
+        if std: s = (s - s.mean())/s.std()
+        fig3 = px.line(x=s.index, y=s.values, labels={"x":"Date","y":"Index"})
+        st.plotly_chart(fig3, use_container_width=True)
+
+    # ────────────────────────────────────────────────────────────────
+    #  4) Major Field Comparison (clickable legend)
+    st.header("4️⃣ CS vs Math/Stats vs Physics")
+    cs_cols = [c for c in df_raw_filt if c.startswith("cs.")]
+    math_cols = [c for c in df_raw_filt if c.startswith("math.") or c.startswith("stat.")]
+    phys_cols = [c for c in df_raw_filt if c not in cs_cols+math_cols]
+    grp = pd.DataFrame({
+        "Computer Science": df_raw_filt[cs_cols].sum(axis=1),
+        "Math & Statistics": df_raw_filt[math_cols].sum(axis=1),
+        "Physics":           df_raw_filt[phys_cols].sum(axis=1),
+    })
+    fig4 = px.line(grp.reset_index(), x="index", y=grp.columns,
+                   labels={"index":"Date","value":"Monthly Preprints"})
+    st.plotly_chart(fig4, use_container_width=True)
+
+    # ────────────────────────────────────────────────────────────────
+    #  5) YoY Growth for expert macro view
+    st.header("5️⃣ Year-over-Year Growth")
+    yoy = st.multiselect("Pick for YoY %", list(arxiv_categories.values()), default=[list(arxiv_categories.values())[0]])
+    if yoy:
+        yoy_df = df_filt[yoy].pct_change(12)*100
+        fig5 = px.line(yoy_df.reset_index(), x="index", y=yoy,
+                       labels={"index":"Date","value":"YoY Growth (%)"})
+        st.plotly_chart(fig5, use_container_width=True)
+
+    # ────────────────────────────────────────────────────────────────
+    #  Data Export
+    st.header("💾 Export Data")
+    csv = df_filt.to_csv().encode("utf-8")
+    st.download_button("Download CSV", csv, "arxiv_data.csv", "text/csv")
+
+
+'''
 # Package imports
 import streamlit as st
 import pandas as pd
@@ -355,3 +741,4 @@ if not df_filtered[selected_categories].empty:
     st.download_button("Export data as CSV", csv, "arxiv_data.csv", "text/csv")
 else:
     st.write("No data available for export.")
+'''
