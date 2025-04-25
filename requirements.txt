@@ -9,3 +9,5 @@ openpyxl
 datetime
 seaborn
 statsmodels
+sqlite3
+logging
