@@ -1,4 +1,4 @@
-# 📈 Tracking the Evolution of Science Worldwide
+# 📈 arXiv Preprints: A Real-Time Proxy of Technological Research Activity
 
 This repository contains Python code to **measure the evolution of research activity worldwide** by counting monthly publications in different arXiv knowledge categories. 
 
