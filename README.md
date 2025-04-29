@@ -1,6 +1,6 @@
 # 📈 Tracking the Evolution of Science Worldwide
 
-This repository contains Python code to **measure the evolution of science worldwide** by counting monthly publications in different arXiv knowledge categories. 
+This repository contains Python code to **measure the evolution of research activity worldwide** by counting monthly publications in different arXiv knowledge categories. 
 
 [ArXiv](https://arxiv.org/) is an open-access research paper repository covering a wide range of disciplines, including physics, mathematics, computer science, biology, statistics, quantitative finance, and more. As one of the most important platforms for the early dissemination of research results, arXiv is considered a reliable indicator of global scientific progress.
 
