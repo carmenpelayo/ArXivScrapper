@@ -266,7 +266,7 @@ for col in df_std.columns:
     ax2.plot(df_std.index, df_std[col], label=col)
 ax2.set_title("Monthly Publications Comparison")
 ax2.set_xlabel("Date")
-ax2.set_ylabel("Standardized Value" if standardize else "Publications")
+ax2.set_ylabel("Smoothened Series" if smooth else "Publications")
 ax2.legend()
 ax2.grid(True)
 st.pyplot(fig2)
