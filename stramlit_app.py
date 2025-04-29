@@ -1,3 +1,15 @@
+import streamlit as st
+
+st.set_page_config(page_title="ArXiv Tracker", layout="wide")
+
+st.title("Welcome to ArXiv Tracker 📚")
+st.markdown("""
+This app helps you explore, forecast, and analyze research publications from **arXiv**.
+Use the sidebar to navigate through the different functionalities.
+""")
+
+
+'''
 # Package imports
 import streamlit as st
 import pandas as pd
@@ -355,3 +367,4 @@ if not df_filtered[selected_categories].empty:
     st.download_button("Export data as CSV", csv, "arxiv_data.csv", "text/csv")
 else:
     st.write("No data available for export.")
+'''
