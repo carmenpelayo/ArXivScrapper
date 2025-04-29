@@ -148,7 +148,7 @@ arxiv_categories = {
 # 1. Load & Prepare Data
 # ======================
 st.title("ArXiv Tracker")
-st.markdown("This app leverages data extracted from arXiv to analyze the **evolution of science worldwide**. In particular, with this app you can:")
+st.markdown("This app leverages data extracted from arXiv to analyze the **evolution of research activity worldwide**. In particular, with this app you can:")
 st.markdown("(1) **Forecast** the future evolution of a certain category.")
 st.markdown("(2) **Numerically and visually analyze** different arXiv categories.")
 st.markdown("(3) **Decompose** a certain category to analyze its time components.")
@@ -191,11 +191,11 @@ with st.sidebar:
     else:
         df_filtered = df.copy()
     
-    # -- Standardization Toggle --
-    standardize = st.checkbox("Standardize Data", value=False)
-    if standardize:
-        # Standardize each selected series
-        df_std = (df_filtered[selected_categories] - df_filtered[selected_categories].mean()) / df_filtered[selected_categories].std()
+    # -- Smoothing Toggle --
+    smooth = st.checkbox("Smoothen Data", value=False)
+    if smooth:
+        # Smoothen each selected series
+        df_std = df_filtered[selected_categories].rolling(6).mean()
     else:
         df_std = df_filtered[selected_categories]
     
@@ -213,11 +213,11 @@ with st.sidebar:
         default=all_categories[:3]
     )
     # Aggregation method: Sum or Average
-    agg_method = st.selectbox("Aggregation Method", ["Sum", "Average"])
+    agg_method = st.selectbox("Aggregation Method", ["Sum Categories", "Average Categories"])
     # Option to apply smoothing (moving average)
-    apply_smoothing = st.checkbox("Apply Smoothing (Moving Average)", value=False)
+    apply_smoothing = st.checkbox("Apply Smoothing", value=False)
     if apply_smoothing:
-        ma_window = st.slider("Moving Average Window (months)", min_value=1, max_value=12, value=3)
+        ma_window = st.slider("Moving-Average Window (months)", min_value=1, max_value=12, value=3)
     # Option to standardize the aggregated index
     standardize_index = st.checkbox("Standardize Index", value=False)
 
@@ -241,8 +241,8 @@ if selected_forecast:
         future = model.make_future_dataframe(periods=future_months, freq='MS')
         forecast = model.predict(future)
         fig1, ax1 = plt.subplots(figsize=(10, 5))
-        ax1.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", marker='o')
-        ax1.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed')
+        ax1.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", color='004481')
+        ax1.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed', color='2DCCCD')
         ax1.set_title(f"Predicted Monthly Publications for {selected_forecast}")
         ax1.set_xlabel("Year")
         ax1.set_ylabel("ArXiv Monthly Publications")
@@ -274,7 +274,7 @@ st.pyplot(fig2)
 # -- Summary stats
 st.markdown("**Basic statistics** of your selected categories: ")
 if selected_categories:
-    st.write(df_filtered[selected_categories].describe())
+    st.write(df_filtered[selected_categories].describe().iloc[1:])
 else:
     st.write("Please select at least one category.")
 
@@ -282,7 +282,7 @@ else:
 st.markdown("Examine how your selected categories relate to each other with the **correlation heatmap** below.")
 if selected_categories:
     corr = df_filtered[selected_categories].corr()
-    fig3, ax3 = plt.subplots(figsize=(8, 6))
+    fig3, ax3 = plt.subplots(figsize=(6, 4))
     sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax3)
     ax3.set_title("Correlation between Categories")
     st.pyplot(fig3)
@@ -302,7 +302,7 @@ if selected_decomp:
     # Using an additive model and period=12 (monthly data)
     try:
         decomp_result = sm.tsa.seasonal_decompose(df_filtered[selected_decomp], model='additive', period=12)
-        fig4 = decomp_result.plot()
+        fig4 = decomp_result.plot(color='004481')
         fig4.set_size_inches(10, 8)
         st.pyplot(fig4)
     except Exception as e:
@@ -326,7 +326,7 @@ if selected_index_categories:
     
     # Apply smoothing if selected (using a rolling window).
     if apply_smoothing:
-        index_series = index_series.rolling(window=ma_window).sum()
+        index_series = index_series.rolling(window=ma_window).mean()
     
     # Standardize if selected.
     if standardize_index:
