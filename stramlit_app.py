@@ -241,8 +241,8 @@ if selected_forecast:
         future = model.make_future_dataframe(periods=future_months, freq='MS')
         forecast = model.predict(future)
         fig1, ax1 = plt.subplots(figsize=(10, 5))
-        ax1.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", color='004481')
-        ax1.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed', color='2DCCCD')
+        ax1.plot(df_prophet["ds"], df_prophet["y"], label="Actual Data", color='#004481')
+        ax1.plot(forecast["ds"], forecast["yhat"], label="Predicted Data", linestyle='dashed', color='#2DCCCD')
         ax1.set_title(f"Predicted Monthly Publications for {selected_forecast}")
         ax1.set_xlabel("Year")
         ax1.set_ylabel("ArXiv Monthly Publications")
@@ -302,7 +302,7 @@ if selected_decomp:
     # Using an additive model and period=12 (monthly data)
     try:
         decomp_result = sm.tsa.seasonal_decompose(df_filtered[selected_decomp], model='additive', period=12)
-        fig4 = decomp_result.plot(color='004481')
+        fig4 = decomp_result.plot(color='#004481')
         fig4.set_size_inches(10, 8)
         st.pyplot(fig4)
     except Exception as e:
