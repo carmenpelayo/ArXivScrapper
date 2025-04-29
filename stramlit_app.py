@@ -302,7 +302,7 @@ if selected_decomp:
     # Using an additive model and period=12 (monthly data)
     try:
         decomp_result = sm.tsa.seasonal_decompose(df_filtered[selected_decomp], model='additive', period=12)
-        fig4 = decomp_result.plot(color='#004481')
+        fig4 = decomp_result.plot()
         fig4.set_size_inches(10, 8)
         st.pyplot(fig4)
     except Exception as e:
@@ -334,7 +334,7 @@ if selected_index_categories:
     
     # Plot the custom index.
     fig_index, ax_index = plt.subplots(figsize=(10, 5))
-    ax_index.plot(index_series.index, index_series, marker='o')
+    ax_index.plot(index_series.index, index_series, color="#2DCCCD")
     ax_index.set_title("Custom Aggregated Index")
     ax_index.set_xlabel("Date")
     ax_index.set_ylabel("Index Value")
