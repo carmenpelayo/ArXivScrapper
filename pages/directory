@@ -1,7 +1,0 @@
-/my-arxiv-app/
-    ├── streamlit_app.py
-    ├── arxiv_monthly_publications.xlsx
-    ├── pages/
-        ├── 1_Forecasting.py
-        ├── 2_Decomposition.py
-        ├── 3_Custom_Index.py
